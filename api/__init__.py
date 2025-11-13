@@ -1,0 +1,2 @@
+# FastAPI Face Recognition Application
+

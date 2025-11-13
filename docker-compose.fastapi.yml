@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with pgvector extension
+  postgres:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    container_name: face-recognition-db
+    environment:
+      POSTGRES_DB: face_recognition
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      # Persist database data
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - face-recognition-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # FastAPI application
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    container_name: face-recognition-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database connection
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=face_recognition
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      # Face recognition settings
+      - FACE_MATCH_THRESHOLD=0.45
+      - EMBEDDING_DIMENSION=128
+      # Vector index settings (adjust based on expected user count)
+      - VECTOR_INDEX_LISTS=100
+    ports:
+      - "8000:8000"
+    networks:
+      - face-recognition-net
+    restart: unless-stopped
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  face-recognition-net:
+    driver: bridge
+
