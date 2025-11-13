@@ -61,6 +61,24 @@ pip install -r requirements.txt
 
 ### 3. Prepare Known Faces
 
+You have two options to add face images:
+
+#### Option A: Use the Capture Script (Recommended)
+
+Use the included `capture_faces.py` script to capture images directly from your webcam:
+
+```bash
+python capture_faces.py
+```
+
+The script will:
+- Prompt you for the person's name
+- Open your webcam
+- Let you capture multiple images (press SPACE to capture)
+- Automatically save images to the correct folder structure
+
+#### Option B: Manually Add Images
+
 Create a `known_faces` directory and add subdirectories for each person:
 
 ```bash
@@ -68,11 +86,65 @@ mkdir -p known_faces/person1
 mkdir -p known_faces/person2
 ```
 
-Add multiple images of each person to their respective folders. The system will automatically load and encode all faces.
+Then add image files (`.jpg`, `.jpeg`, `.png`, `.bmp`, `.gif`) to each person's folder:
+
+```bash
+known_faces/
+├── person1/
+│   ├── photo1.jpg
+│   ├── photo2.jpg
+│   └── photo3.jpg
+└── person2/
+    ├── photo1.jpg
+    └── photo2.jpg
+```
+
+**What Images Work Best?**
+
+For best recognition accuracy, use images with these characteristics:
+
+✅ **Good Images:**
+- Clear, front-facing photos (person looking at camera)
+- Good lighting (face is well-lit, not too dark or overexposed)
+- Face takes up a reasonable portion of the image (not too small)
+- Multiple images per person (3-10 images recommended)
+- Different angles slightly (straight, slight left, slight right)
+- Different expressions (neutral, smiling)
+- Different lighting conditions if possible
+
+❌ **Avoid:**
+- Blurry or low-resolution images
+- Faces that are too small in the frame
+- Extreme angles (profile views, looking up/down)
+- Heavy shadows or backlighting
+- Images with multiple faces (only first face is used)
+- Sunglasses or face coverings
+- Very old photos if appearance has changed significantly
+
+**Tips:**
+- **5-10 images per person** is ideal for good recognition
+- The system averages all encodings from a person's folder, so more variety helps
+- Test with the same lighting conditions you'll use during recognition
 
 ## Usage
 
-### Basic Usage
+### Step 1: Capture Known Faces
+
+First, capture face images for people you want to recognize:
+
+```bash
+python capture_faces.py
+```
+
+Follow the prompts to:
+1. Enter the person's name
+2. Position face in the camera frame
+3. Press SPACE to capture each image
+4. Capture 5-10 images per person for best results
+
+### Step 2: Run Face Recognition
+
+Once you have known faces loaded, run the main application:
 
 ```bash
 python main.py
