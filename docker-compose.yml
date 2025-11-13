@@ -1,11 +1,34 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: face-recognition-db
+    environment:
+      POSTGRES_DB: face_recognition
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      # Persist database data
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - face-recognition-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   face-recognition:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: face-recognition-app
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       # Mount known_faces directory to persist face data
       - ./known_faces:/app/known_faces
@@ -16,14 +39,29 @@ services:
     environment:
       - DISPLAY=${DISPLAY:-:0}
       - QT_X11_NO_MITSHM=1
+      # Database connection
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=face_recognition
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
     devices:
       # Mount camera device (adjust /dev/video0 if needed)
       - /dev/video0:/dev/video0
-    network_mode: host
-    # For macOS/Windows, you might need to use host network mode differently
-    # network_mode: host
+    # Use bridge network to connect to postgres service
+    # Note: For camera access on Linux, you may need network_mode: host
+    # In that case, use DB_HOST=localhost and ensure postgres port is exposed
+    networks:
+      - face-recognition-net
     stdin_open: true
     tty: true
     # Uncomment if you want to run capture_faces.py instead
     # command: ["python", "capture_faces.py"]
+
+volumes:
+  postgres_data:
+
+networks:
+  face-recognition-net:
+    driver: bridge
 

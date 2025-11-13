@@ -18,6 +18,14 @@ import numpy as np
 from typing import List, Dict, Tuple, Optional
 from pathlib import Path
 
+# Optional database import
+try:
+    from database import FaceDatabase
+    DB_AVAILABLE = True
+except ImportError:
+    DB_AVAILABLE = False
+    FaceDatabase = None
+
 
 class FaceRecognizer:
     """
@@ -29,7 +37,11 @@ class FaceRecognizer:
     - ONNX: Convert models to ONNX for optimized inference
     """
     
-    def __init__(self, known_faces_dir: str = "known_faces", tolerance: float = 0.6):
+    def __init__(self, 
+                 known_faces_dir: str = "known_faces", 
+                 tolerance: float = 0.6,
+                 use_database: bool = False,
+                 db: FaceDatabase = None):
         """
         Initialize face recognizer.
         
@@ -38,11 +50,25 @@ class FaceRecognizer:
                            Each subdirectory should contain images of that person
             tolerance: Distance threshold for face matching (lower = more strict)
                      Typical values: 0.4-0.6 for face_recognition
+            use_database: If True, use database for storing/loading faces
+            db: FaceDatabase instance (if None and use_database=True, will create one)
         """
         self.known_faces_dir = known_faces_dir
         self.tolerance = tolerance
         self.known_face_encodings: List[np.ndarray] = []
         self.known_face_names: List[str] = []
+        self.use_database = use_database and DB_AVAILABLE
+        self.db = db
+        
+        # Initialize database if needed
+        if self.use_database and self.db is None:
+            try:
+                self.db = FaceDatabase()
+                print("✓ Using database for face storage")
+            except Exception as e:
+                print(f"Warning: Could not connect to database: {e}")
+                print("Falling back to file-based storage")
+                self.use_database = False
         
         # TODO: Production - Initialize ArcFace/InsightFace model
         # import insightface
@@ -57,6 +83,44 @@ class FaceRecognizer:
         self.load_known_faces()
     
     def load_known_faces(self):
+        """
+        Load all known faces from database or file system.
+        
+        If use_database is True, loads from database.
+        Otherwise, loads from known_faces directory.
+        """
+        if self.use_database and self.db:
+            self._load_from_database()
+        else:
+            self._load_from_files()
+    
+    def _load_from_database(self):
+        """Load known faces from database."""
+        try:
+            encodings_data = self.db.get_all_encodings()
+            
+            # Group encodings by person
+            person_encodings_dict = {}
+            for encoding, name, person_id in encodings_data:
+                if name not in person_encodings_dict:
+                    person_encodings_dict[name] = []
+                person_encodings_dict[name].append(encoding)
+            
+            # Average encodings per person
+            for name, encodings in person_encodings_dict.items():
+                avg_encoding = np.mean(encodings, axis=0)
+                self.known_face_encodings.append(avg_encoding)
+                self.known_face_names.append(name)
+                print(f"Loaded {len(encodings)} face encoding(s) for {name} from database")
+            
+            print(f"\nLoaded {len(self.known_face_names)} known person(s) from database")
+            print(f"Known persons: {', '.join(self.known_face_names)}")
+        except Exception as e:
+            print(f"Error loading from database: {e}")
+            print("Falling back to file-based storage")
+            self._load_from_files()
+    
+    def _load_from_files(self):
         """
         Load all known faces from the known_faces directory.
         
@@ -99,7 +163,19 @@ class FaceRecognizer:
                     
                     if len(encodings) > 0:
                         # Use the first face found in the image
-                        person_encodings.append(encodings[0])
+                        encoding = encodings[0]
+                        person_encodings.append(encoding)
+                        
+                        # Optionally save to database if enabled
+                        if self.use_database and self.db:
+                            try:
+                                person_id = self.db.get_person_by_name(person_name)
+                                if person_id is None:
+                                    person_id = self.db.add_person(person_name)
+                                self.db.add_face_encoding(person_id, encoding, image_path)
+                            except Exception as e:
+                                print(f"Warning: Could not save to database: {e}")
+                        
                         print(f"Loaded face encoding for {person_name} from {image_file}")
                     else:
                         print(f"Warning: No face found in {image_path}")
@@ -157,12 +233,13 @@ class FaceRecognizer:
         """
         pass
     
-    def match_face(self, face_encoding: np.ndarray) -> Tuple[Optional[str], float]:
+    def match_face(self, face_encoding: np.ndarray, log_to_db: bool = True) -> Tuple[Optional[str], float]:
         """
         Match a face encoding against known faces.
         
         Args:
             face_encoding: 128-dimensional face encoding
+            log_to_db: If True and database is enabled, log recognition event
             
         Returns:
             Tuple of (matched_name, distance) or (None, distance) if no match
@@ -181,10 +258,27 @@ class FaceRecognizer:
         best_distance = distances[best_match_index]
         
         # Check if distance is below threshold
+        matched_name = None
         if best_distance <= self.tolerance:
-            return self.known_face_names[best_match_index], best_distance
-        else:
-            return None, best_distance
+            matched_name = self.known_face_names[best_match_index]
+        
+        # Log to database if enabled
+        if log_to_db and self.use_database and self.db:
+            try:
+                person_id = None
+                if matched_name:
+                    person_id = self.db.get_person_by_name(matched_name)
+                confidence = 1.0 - best_distance  # Convert distance to confidence
+                self.db.log_recognition(
+                    person_id=person_id,
+                    recognized_name=matched_name,
+                    confidence=confidence,
+                    distance=best_distance
+                )
+            except Exception as e:
+                print(f"Warning: Could not log to database: {e}")
+        
+        return matched_name, best_distance
     
     def match_face_cosine(self, face_encoding: np.ndarray) -> Tuple[Optional[str], float]:
         """

@@ -7,6 +7,7 @@ A real-time face recognition system built with Python, OpenCV, and face_recognit
 - ✅ Real-time face detection using face_recognition (dlib HOG/SVM)
 - ✅ Face encoding extraction (128-dimensional embeddings)
 - ✅ Real-time matching against known faces database
+- ✅ PostgreSQL database support for persistent face storage and recognition logging
 - ✅ Optimized for speed with frame resizing and processing optimizations
 - ✅ Clean, modular architecture ready for production enhancements
 
@@ -18,10 +19,12 @@ face-detection/
 ├── recognizer.py            # Face recognition module (ready for ArcFace/InsightFace)
 ├── main.py                  # Main application with video loop
 ├── capture_faces.py         # Utility script to capture faces from webcam
+├── database.py              # PostgreSQL database interface
+├── db_utils.py              # Database utility scripts
 ├── requirements.txt         # Python dependencies
 ├── Dockerfile               # Docker image for face recognition (with GUI support)
 ├── Dockerfile.headless      # Docker image for headless servers
-├── docker-compose.yml       # Docker Compose configuration
+├── docker-compose.yml       # Docker Compose configuration (includes PostgreSQL)
 ├── .dockerignore            # Files to exclude from Docker build
 ├── .gitignore               # Git ignore rules
 ├── known_faces/             # Directory for known face images (gitignored)
@@ -45,10 +48,12 @@ Docker eliminates the need to install system dependencies manually.
 
 #### Quick Start with Docker
 
-1. **Build and run with docker-compose:**
+1. **Build and run with docker-compose (includes PostgreSQL):**
    ```bash
    docker-compose up --build
    ```
+   
+   This will start both the face recognition app and PostgreSQL database.
 
 2. **Or build and run manually:**
    ```bash
@@ -225,9 +230,60 @@ config = {
     'display_scale': 1.0,        # Display window scale
     'process_scale': 0.25,       # Processing scale (0.25 = 1/4 size, faster)
     'frame_skip': 1,             # Process every Nth frame
-    'tolerance': 0.6             # Matching threshold (lower = stricter)
+    'tolerance': 0.6,            # Matching threshold (lower = stricter)
+    'use_database': False        # Set to True to use PostgreSQL database
 }
 ```
+
+### Database Support
+
+The system supports PostgreSQL for persistent face storage and recognition logging.
+
+#### Enable Database Mode
+
+1. **With Docker Compose** (recommended):
+   - Database is automatically set up when using `docker-compose up`
+   - Set `'use_database': True` in `main.py` config
+
+2. **Local PostgreSQL**:
+   - Install PostgreSQL locally
+   - Set environment variables:
+     ```bash
+     export DB_HOST=localhost
+     export DB_PORT=5432
+     export DB_NAME=face_recognition
+     export DB_USER=postgres
+     export DB_PASSWORD=postgres
+     ```
+   - Set `'use_database': True` in `main.py` config
+
+#### Database Features
+
+- **Persistent Storage**: Face encodings stored in database (survives container restarts)
+- **Recognition Logging**: All recognition events are logged with timestamps
+- **Scalability**: Better for large numbers of known faces
+- **Querying**: Easy to query recognition history and statistics
+
+#### Database Utilities
+
+Use `db_utils.py` to manage the database:
+
+```bash
+# Show database statistics
+python db_utils.py stats
+
+# List all persons
+python db_utils.py list
+
+# Delete a person by ID
+python db_utils.py delete <person_id>
+```
+
+#### Database Schema
+
+- **persons**: Stores person information (id, name, timestamps)
+- **face_encodings**: Stores face encodings linked to persons
+- **recognition_logs**: Logs all recognition events with confidence scores
 
 ### Controls
 

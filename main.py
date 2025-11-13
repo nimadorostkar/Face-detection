@@ -29,7 +29,8 @@ class FaceRecognitionSystem:
         display_scale: float = 1.0,
         process_scale: float = 0.25,
         frame_skip: int = 1,
-        tolerance: float = 0.6
+        tolerance: float = 0.6,
+        use_database: bool = False
     ):
         """
         Initialize the face recognition system.
@@ -41,6 +42,7 @@ class FaceRecognitionSystem:
             process_scale: Scale factor for processing (0.25 = 1/4 size, faster)
             frame_skip: Process every Nth frame (1 = all frames, 2 = every other)
             tolerance: Face matching tolerance
+            use_database: If True, use PostgreSQL database for face storage
         """
         self.camera_index = camera_index
         self.display_scale = display_scale
@@ -50,7 +52,8 @@ class FaceRecognitionSystem:
         self.detector = FaceDetector(model='hog', scale_factor=process_scale)
         self.recognizer = FaceRecognizer(
             known_faces_dir=known_faces_dir,
-            tolerance=tolerance
+            tolerance=tolerance,
+            use_database=use_database
         )
         
         # Performance tracking
@@ -243,7 +246,8 @@ def main():
         'display_scale': 1.0,      # Display at original size
         'process_scale': 0.25,    # Process at 1/4 size for speed
         'frame_skip': 1,           # Process every frame
-        'tolerance': 0.6           # Face matching tolerance
+        'tolerance': 0.6,         # Face matching tolerance
+        'use_database': False       # Set to True to use PostgreSQL database
     }
     
     # Adjust for lower-end hardware
