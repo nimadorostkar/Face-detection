@@ -4,6 +4,7 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Install system dependencies for OpenCV and face_recognition
+# Note: libatlas-base-dev removed (not available in newer Debian, libopenblas-dev is sufficient)
 RUN apt-get update && apt-get install -y \
     build-essential \
     cmake \
@@ -20,7 +21,6 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     libpng-dev \
     libtiff-dev \
-    libatlas-base-dev \
     python3-dev \
     curl \
     && rm -rf /var/lib/apt/lists/*
