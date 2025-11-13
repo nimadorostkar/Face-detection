@@ -1,0 +1,12 @@
+opencv-python>=4.8.0
+face-recognition>=1.3.0
+numpy>=1.24.0
+dlib>=19.24.0
+
+# Optional production dependencies (uncomment as needed):
+# retinaface>=0.0.16          # For RetinaFace detection
+# mediapipe>=0.10.0           # For MediaPipe/BlazeFace detection
+# insightface>=0.7.3          # For ArcFace/InsightFace embeddings
+# onnxruntime>=1.15.0         # For ONNX model inference
+# onnxruntime-gpu>=1.15.0     # For GPU-accelerated ONNX inference
+
