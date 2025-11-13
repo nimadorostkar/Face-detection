@@ -1,0 +1,47 @@
+# Headless Dockerfile (for servers without display)
+# Use this if you don't need GUI display and want to save space
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install minimal system dependencies (no GUI libraries)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    libopenblas-dev \
+    liblapack-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libswscale-dev \
+    libv4l-dev \
+    libxvidcore-dev \
+    libx264-dev \
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    libatlas-base-dev \
+    python3-dev \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY detector.py recognizer.py main.py capture_faces.py ./
+
+# Create known_faces directory
+RUN mkdir -p /app/known_faces
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# For headless mode, you might want to save frames instead of displaying
+# Modify main.py to save frames or use a different output method
+CMD ["python", "main.py"]
+

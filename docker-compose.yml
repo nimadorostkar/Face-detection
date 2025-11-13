@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  face-recognition:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: face-recognition-app
+    volumes:
+      # Mount known_faces directory to persist face data
+      - ./known_faces:/app/known_faces
+      # Mount X11 socket for display (Linux)
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # Mount display (Linux)
+      - $DISPLAY:$DISPLAY
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - QT_X11_NO_MITSHM=1
+    devices:
+      # Mount camera device (adjust /dev/video0 if needed)
+      - /dev/video0:/dev/video0
+    network_mode: host
+    # For macOS/Windows, you might need to use host network mode differently
+    # network_mode: host
+    stdin_open: true
+    tty: true
+    # Uncomment if you want to run capture_faces.py instead
+    # command: ["python", "capture_faces.py"]
+

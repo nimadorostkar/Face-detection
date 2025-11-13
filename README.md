@@ -13,12 +13,18 @@ A real-time face recognition system built with Python, OpenCV, and face_recognit
 ## Project Structure
 
 ```
-face/
-├── detector.py          # Face detection module (dlib-based, ready for RetinaFace/MediaPipe)
-├── recognizer.py        # Face recognition module (ready for ArcFace/InsightFace)
-├── main.py              # Main application with video loop
-├── requirements.txt     # Python dependencies
-├── known_faces/         # Directory for known face images
+face-detection/
+├── detector.py              # Face detection module (dlib-based, ready for RetinaFace/MediaPipe)
+├── recognizer.py            # Face recognition module (ready for ArcFace/InsightFace)
+├── main.py                  # Main application with video loop
+├── capture_faces.py         # Utility script to capture faces from webcam
+├── requirements.txt         # Python dependencies
+├── Dockerfile               # Docker image for face recognition (with GUI support)
+├── Dockerfile.headless      # Docker image for headless servers
+├── docker-compose.yml       # Docker Compose configuration
+├── .dockerignore            # Files to exclude from Docker build
+├── .gitignore               # Git ignore rules
+├── known_faces/             # Directory for known face images (gitignored)
 │   ├── person1/
 │   │   ├── image1.jpg
 │   │   └── image2.jpg
@@ -28,6 +34,64 @@ face/
 ```
 
 ## Installation
+
+### Option A: Docker (Recommended for Easy Setup)
+
+Docker eliminates the need to install system dependencies manually.
+
+#### Prerequisites
+- [Docker](https://www.docker.com/get-started) installed
+- [Docker Compose](https://docs.docker.com/compose/install/) (usually included with Docker Desktop)
+
+#### Quick Start with Docker
+
+1. **Build and run with docker-compose:**
+   ```bash
+   docker-compose up --build
+   ```
+
+2. **Or build and run manually:**
+   ```bash
+   # Build the image
+   docker build -t face-recognition .
+   
+   # Run the container (Linux)
+   docker run -it --rm \
+     --device=/dev/video0 \
+     -v $(pwd)/known_faces:/app/known_faces \
+     -e DISPLAY=$DISPLAY \
+     -v /tmp/.X11-unix:/tmp/.X11-unix \
+     face-recognition
+   
+   # Run on macOS/Windows (camera access may vary)
+   docker run -it --rm \
+     -v $(pwd)/known_faces:/app/known_faces \
+     face-recognition
+   ```
+
+3. **For headless servers (no display):**
+   ```bash
+   docker build -f Dockerfile.headless -t face-recognition-headless .
+   docker run -it --rm \
+     --device=/dev/video0 \
+     -v $(pwd)/known_faces:/app/known_faces \
+     face-recognition-headless
+   ```
+
+**Note:** Camera access on macOS/Windows may require additional configuration. On Linux, ensure your user is in the `video` group.
+
+#### Docker Commands
+
+- **Capture faces:** Modify `docker-compose.yml` to use `capture_faces.py` or run:
+  ```bash
+  docker-compose run --rm face-recognition python capture_faces.py
+  ```
+
+- **Stop container:** Press `Ctrl+C` or run `docker-compose down`
+
+- **View logs:** `docker-compose logs -f`
+
+### Option B: Local Installation
 
 ### 1. Install System Dependencies
 
@@ -232,6 +296,42 @@ Add anti-spoofing measures:
 - **CUDA**: Enable CUDA support in dlib/OpenCV
 
 ## Troubleshooting
+
+### Docker Issues
+
+#### Camera Not Accessible in Docker
+
+**Linux:**
+```bash
+# Add your user to video group
+sudo usermod -aG video $USER
+# Log out and back in, then try again
+
+# Or run with privileged mode (less secure)
+docker run --privileged ...
+```
+
+**macOS/Windows:**
+- Docker Desktop on macOS/Windows has limited camera access
+- Consider using a USB camera with specific device mapping
+- Alternative: Use the local installation instead of Docker
+
+#### Display Not Working (Linux)
+
+```bash
+# Allow X11 forwarding
+xhost +local:docker
+
+# Then run docker with display settings
+docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix ...
+```
+
+#### Build Fails (dlib compilation)
+
+The Dockerfile includes all necessary build dependencies. If build fails:
+- Ensure you have enough disk space (dlib compilation needs ~2GB)
+- Try building with more memory: `docker build --memory=4g ...`
+- Check Docker logs: `docker-compose logs`
 
 ### Camera Not Opening
 
